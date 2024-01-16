@@ -6,7 +6,8 @@ import csv
 def get_model(name):
 
     if name == 'uae-large':
-        model = AnglE.from_pretrained('WhereIsAI/UAE-Large-V1', pooling_strategy='cls').cuda()
+        model = AnglE.from_pretrained('WhereIsAI/UAE-Large-V1',
+                                      pooling_strategy='cls').cuda()
         dimensions = 1024
 
     if name == 'bge-large':

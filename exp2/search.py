@@ -50,8 +50,14 @@ def main():
     args = parser.parse_args()
 
     dataset = args.input
-    args.input = '../data/' + args.input + '/'
-    files = os.listdir(args.input)
+
+    files = []
+    if dataset == 'wikitables':
+        args.input = './benchmarks_wikitables/queries.txt'
+        files = open(args.input, "r")
+    else:
+        args.input = '../data/' + args.input + '/'
+        files = os.listdir(args.input)
 
     models = []
     if args.model == 'all':
@@ -63,79 +69,67 @@ def main():
         model, dimensions = get_model(m)
         model.max_seq_length = dimensions
 
-        index = faiss.IndexIDMap(faiss.IndexFlatIP(dimensions))
+        index = faiss.read_index("./index_files/"+m+"_"+dataset+".index")
+        map = pd.read_csv("./index_files/"+m+"_"+dataset+"_map.csv")
 
-        # Id del dataset en el indice
-        id = 0
-        # Dataframe que guarda los emparejamiento de id - archivo
-        map = pd.DataFrame()
-        discarted_files = 0
+        results = pd.DataFrame(columns=['q', 'P@1', 'RR'])
 
-        for file in tqdm(files[:10]):
-
+        for ir, file in enumerate(tqdm(files[:10])):
             try:
-                # Read dataframe
-                delimiter = find_delimiter(args.input + file)
-                df = pd.read_csv(args.input + file, sep=delimiter, nrows=100)
+                if dataset == 'wikitables':
+                    file_name = file.split("\t")[1].strip()
+                    df = pd.read_csv('../data/wikitables/' + file_name + ".csv")
 
-                # Remove columns with all NaNs
-                df = df.dropna(axis='columns', how='all')
-                df.dropna(how='all', inplace=True)
+                else:
+                    # Read dataframe
+                    delimiter = find_delimiter(args.input + file)
+                    df = pd.read_csv(args.input + file, sep=delimiter)
 
-                ##############
-                #  BASELINE  #
-                ##############
-
-                if dataset != 'wikitables':
+                    # Remove columns with all NaNs
+                    df = df.dropna(axis='columns', how='all')
+                    df.dropna(how='all', inplace=True)
 
                     # Se mezcla
                     df = sklearn.utils.shuffle(df, random_state=0)
 
                     # Seleccionamos % de la tabla que sera indexado
-                    ratio = 0.90
+                    ratio = 0.10
                     total_rows = df.shape[0]
-                    index_size = int(total_rows*ratio)
+                    search_size = int(total_rows*ratio)
 
                     # Datos en para indexar
-                    df_index = df[0:index_size]
+                    df_search = df[-search_size:]
 
                     # Se calculan los embeddings
-                    embs = content_embeddings(model, df_index, dimensions, m)
+                    embs = content_embeddings(model, df_search, dimensions, m)
                     embs = np.array([np.mean(embs, axis=0)])
                     # Se normalizan
                     faiss.normalize_L2(embs)
 
-                    # Se indexan y se las pasa un id
-                    index.add_with_ids(embs, np.array([id]))
-                    new_row = {"id": id, "dataset": file}
-                    map = pd.concat([map, pd.DataFrame([new_row])],
-                                    ignore_index=True)
-                    id += 1
+                    distances, ann = index.search(np.array(embs), k=10)
+                    #results_aux = pd.DataFrame({'distances': distances[0], 'ann': ann[0]})
 
-                else:
-                    # Se calculan los embeddings
-                    embs = content_embeddings(model, df_index, dimensions, m)
-                    embs = np.array([np.mean(embs, axis=0)])
-                    # Se normalizan
-                    faiss.normalize_L2(embs)
+                    # Calculate P_1
+                    r_id = ann[0][0]
+                    p_1 = 0
+                    print(map.iloc[r_id]['dataset'], file)
+                    if map.iloc[r_id]['dataset'] == file:
+                        p_1 = 1
 
-                    # Se indexan y se las pasa un id
-                    index.add_with_ids(embs, np.array([id]))
-                    new_row = {"id": id, "dataset": file}
-                    map = pd.concat([map, pd.DataFrame([new_row])],
-                                    ignore_index=True)
-                    id += 1
+                    score_rr = 0
+                    for k, r in enumerate(ann[0]):
+                        if map.iloc[r_id]['dataset'] == file:
+                            score_rr = 1/(k+1)
+                            break
+                    # add result to results dataframe
+                    results = results._append({'q': file,
+                                    'P@1': p_1,
+                                    'RR': score_rr},
+                                    ignore_index = True)
 
             except Exception as e:
-                print('Error en archivo', file)
-                discarted_files += 1
                 print(e)
-                print(traceback.format_exc())
-
-        print("Discarted_files:", discarted_files)
-
-        faiss.write_index(index, "./index_files/"+m+"_"+dataset+".index")
-        map.to_csv("./index_files/"+m+"_"+dataset+"_map.csv", index=False)
+        results.to_csv('./results/'+m+'_'+dataset+'.csv')
 
 
 if __name__ == "__main__":
