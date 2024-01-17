@@ -3,9 +3,6 @@ import os
 import time
 from extract_embeddings import extract_base_embeddings, extract_random_reording_embeddings
 
-def random_reordering():
-    return 0
-
 def main():
     parser = argparse.ArgumentParser(description='Process Darta')
     parser.add_argument('-i', '--input', default='sensors',
@@ -17,11 +14,19 @@ def main():
                         choices=['baseline', 'random', 'cluster'])
     parser.add_argument('-r', '--result', default='./indexs',
                         help='Name of the output folder that stores the indexs files')
+    parser.add_argument('-g', '--gpu', default='gpu0')
     
     args = parser.parse_args()
 
     dataset = args.input
-    args.input = '../data/' + args.input + '/'
+    args.input = '../data/' + args.input + '/' + args.gpu + '/'
+
+    # Choose GPU
+    if args.gpu == 'gpu0':
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
+    elif args.gpu == 'gpu5':
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(1)
+
     files = os.listdir(args.input)
 
     models = []
@@ -31,16 +36,10 @@ def main():
         models.append(args.model)
 
     # 1. Extract base embeddings
-    # inicio = time.time()
-    # extract_base_embeddings(args, dataset, files, models)
-    # fin = time.time()
-
-    # tiempo_transcurrido = fin - inicio
-
-    # print("Tiempo transcurrido:", tiempo_transcurrido, "segundos")
+    extract_base_embeddings(args, dataset, files, models)
 
     # 2. Random reordering of its columns test
-    extract_random_reording_embeddings(args, dataset, files, models)
+    # extract_random_reording_embeddings(args, dataset, files, models)
 
 if __name__ == "__main__":
     main()
