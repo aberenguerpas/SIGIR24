@@ -1,7 +1,6 @@
 import argparse
 import os
-import time
-from extract_embeddings import extract_base_embeddings, extract_random_reording_embeddings
+from extract_embeddings import extract_base_embeddings, test_random_reording_embeddings, test_random_deletion_of_columns
 
 def main():
     parser = argparse.ArgumentParser(description='Process Darta')
@@ -19,12 +18,14 @@ def main():
     args = parser.parse_args()
 
     dataset = args.input
-    args.input = '../data/' + args.input + '/' + args.gpu + '/'
+    args.input = '../data/' + args.input + '/'
 
     # Choose GPU
-    if args.gpu == 'gpu0':
+    if args.gpu == 'gpu0' and dataset == 'wikitables':
+        args.input = '../data/' + args.input + '/' + args.gpu + '/'
         os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
-    elif args.gpu == 'gpu5':
+    elif args.gpu == 'gpu5' and dataset == 'wikitables':
+        args.input = '../data/' + args.input + '/' + args.gpu + '/'
         os.environ["CUDA_VISIBLE_DEVICES"] = str(1)
 
     files = os.listdir(args.input)
@@ -39,7 +40,10 @@ def main():
     extract_base_embeddings(args, dataset, files, models)
 
     # 2. Random reordering of its columns test
-    # extract_random_reording_embeddings(args, dataset, files, models)
+    test_random_reording_embeddings(args, dataset, files, models)
+
+    # 3. Randomly deleting 50% of columns test
+    test_random_deletion_of_columns(args, dataset, files, models)
 
 if __name__ == "__main__":
     main()
