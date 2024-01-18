@@ -71,12 +71,12 @@ def main():
         map = pd.DataFrame()
         discarted_files = 0
 
-        for file in tqdm(files[:10]):
+        for file in tqdm(files):
 
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
-                df = pd.read_csv(args.input + file, sep=delimiter, nrows=100)
+                df = pd.read_csv(args.input + file, sep=delimiter)
 
                 # Remove columns with all NaNs
                 df = df.dropna(axis='columns', how='all')
@@ -114,7 +114,7 @@ def main():
 
                 else:
                     # Se calculan los embeddings
-                    embs = content_embeddings(model, df_index, dimensions, m)
+                    embs = content_embeddings(model, df, dimensions, m)
                     embs = np.array([np.mean(embs, axis=0)])
                     # Se normalizan
                     faiss.normalize_L2(embs)
