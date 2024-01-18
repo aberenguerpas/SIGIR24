@@ -14,20 +14,13 @@ def main():
                         choices=['baseline', 'random', 'cluster'])
     parser.add_argument('-r', '--result', default='./indexs',
                         help='Name of the output folder that stores the indexs files')
-    parser.add_argument('-g', '--gpu', default='gpu0')
-    
     args = parser.parse_args()
 
-    dataset = args.input
+    dataset = args.input   
     args.input = '../data/' + args.input + '/'
 
-    # Choose GPU
-    if args.gpu == 'gpu0' and dataset == 'wikitables':
-        args.input = '../data/' + args.input + '/' + args.gpu + '/'
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
-    elif args.gpu == 'gpu5' and dataset == 'wikitables':
-        args.input = '../data/' + args.input + '/' + args.gpu + '/'
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(1)
+    # Enable GPUs
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
     files = os.listdir(args.input)
 

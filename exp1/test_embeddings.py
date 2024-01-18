@@ -12,7 +12,7 @@ from utils import get_model, find_delimiter, content_embeddings, recover_data
 def test_random_reording_embeddings(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
-        model.max_seq_length = dimensions
+        model.max_seq_length = 512
         avg_similarities = np.array(0)
         std_similarities = np.array(0)
 

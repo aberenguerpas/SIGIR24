@@ -7,10 +7,14 @@ import sklearn
 import traceback
 from tqdm import tqdm
 from utils import get_model, find_delimiter
+import torch
+import cProfile
+import pstats
 
 
 # Convertir texto a embedding
 def enconde_text(model_name, model, text):
+
     if model_name == 'uae-large':
         return model.encode(text, to_numpy=True)
     else:
@@ -18,24 +22,25 @@ def enconde_text(model_name, model, text):
 
 
 # Saca embeddings de cada fila
-def content_embeddings(model, df, size, model_name):
+def content_embeddings(model, df, pool):#size, model_name):# pool
     # Array vacio donde meter todos y luego promediarlos
-    all_embs = np.empty((0, size), dtype=np.float32)
+    #all_embs = np.empty((0, size), dtype=np.float32)
 
-    for _, row in df.iterrows():
+    sentences = [" ".join(map(str, row.values.flatten().tolist())) for _, row in df.iterrows()]
 
-        text = " ".join(map(str, row.values.flatten().tolist()))
+    all_embs = model.encode_multi_process(sentences, pool)
+   
+    #for _, row in df.iterrows():
+
+    #    text = " ".join(map(str, row.values.flatten().tolist()))
         # Create embedding from chunks
-        embs = enconde_text(model_name, model, text)
+    #    embs = enconde_text(model_name, model, text)
 
-        if len(embs) > 1:
-            print(len(embs))
-
-        all_embs = np.append(all_embs, embs, axis=0)
+    #    all_embs = np.append(all_embs, embs, axis=0)
 
     return all_embs
 
-
+@profile
 def main():
     parser = argparse.ArgumentParser(description='Process Darta')
     parser.add_argument('-i', '--input', default='sensors',
@@ -53,6 +58,8 @@ def main():
     args.input = '../data/' + args.input + '/'
     files = os.listdir(args.input)
 
+    torch.set_num_threads(4)
+
     models = []
     if args.model == 'all':
         models = ['uae-large', 'bge-large', 'bge-base', 'gte-large', 'ember']
@@ -61,7 +68,8 @@ def main():
 
     for m in models:
         model, dimensions = get_model(m)
-        model.max_seq_length = dimensions
+        model.max_seq_length = 512
+        pool = model.start_multi_process_pool()
 
         index = faiss.IndexIDMap(faiss.IndexFlatIP(dimensions))
 
@@ -71,7 +79,7 @@ def main():
         map = pd.DataFrame()
         discarted_files = 0
 
-        for file in tqdm(files):
+        for file in tqdm(files[:10]):
 
             try:
                 # Read dataframe
@@ -114,7 +122,7 @@ def main():
 
                 else:
                     # Se calculan los embeddings
-                    embs = content_embeddings(model, df, dimensions, m)
+                    embs = content_embeddings(model, df, pool)#dimensions, m) #pool
                     embs = np.array([np.mean(embs, axis=0)])
                     # Se normalizan
                     faiss.normalize_L2(embs)
@@ -129,13 +137,14 @@ def main():
             except Exception as e:
                 print('Error en archivo', file)
                 discarted_files += 1
-                print(e)
-                print(traceback.format_exc())
+                #print(e)
+                #print(traceback.format_exc())
 
+        model.stop_multi_process_pool(pool)
         print("Discarted_files:", discarted_files)
 
         faiss.write_index(index, "./index_files/"+m+"_"+dataset+".index")
-        map.to_csv("./index_files/"+m+"_"+dataset+"_map.csv", index=False)
+       c
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ from utils import get_model, find_delimiter, content_embeddings
 def extract_base_embeddings(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
-        model.max_seq_length = dimensions
+        model.max_seq_length = 512
 
         # Saves key ("m" + "_" + dataset + "_" + "file") - value (embeddings)
         # map = pd.DataFrame()

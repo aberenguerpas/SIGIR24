@@ -54,7 +54,7 @@ def main():
     files = []
     if dataset == 'wikitables':
         args.input = './benchmarks_wikitables/queries.txt'
-        files = open(args.input, "r")
+        files = open(args.input, "r").readlines()
     else:
         args.input = '../data/' + args.input + '/'
         files = os.listdir(args.input)
@@ -73,8 +73,8 @@ def main():
         map = pd.read_csv("./index_files/"+m+"_"+dataset+"_map.csv")
 
         results = pd.DataFrame(columns=['q', 'P@1', 'RR'])
-
-        for ir, file in enumerate(tqdm(files[:10])):
+        print(files)
+        for ir, file in enumerate(tqdm(files)):
             try:
                 if dataset == 'wikitables':
                     file_name = file.split("\t")[1].strip()
@@ -126,7 +126,7 @@ def main():
                                     'P@1': p_1,
                                     'RR': score_rr},
                                     ignore_index = True)
-
+                #print(results.head())
             except Exception as e:
                 print(e)
         results.to_csv('./results/'+m+'_'+dataset+'.csv')
