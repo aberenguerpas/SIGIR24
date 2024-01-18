@@ -13,6 +13,7 @@ def test_random_reording_embeddings(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = 512
+        pool = model.start_multi_process_pool()
         avg_similarities = np.array(0)
         std_similarities = np.array(0)
 
@@ -30,7 +31,7 @@ def test_random_reording_embeddings(args, dataset, files, models):
                 df = shuffle(df)
 
                 # Calculate embeddings
-                embs = content_embeddings(model, df, dimensions, m, tokenizer)
+                embs = content_embeddings(model, df, dimensions, m, tokenizer, pool)
 
                 # Load original index of embeddings
                 index = faiss.read_index('embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
@@ -80,6 +81,7 @@ def test_random_deletion_of_columns(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = dimensions
+        pool = model.start_multi_process_pool()
         avg_similarities = np.array(0)
         std_similarities = np.array(0)
 
@@ -98,7 +100,7 @@ def test_random_deletion_of_columns(args, dataset, files, models):
                 df = df.drop(columns=columns_to_delete)
 
                 # Calculate embeddings
-                embs = content_embeddings(model, df, dimensions, m, tokenizer)
+                embs = content_embeddings(model, df, dimensions, m, tokenizer, pool)
 
                 # Load original index of embeddings
                 index = faiss.read_index('embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
@@ -148,6 +150,7 @@ def test_header_vector(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = dimensions
+        pool = model.start_multi_process_pool()
         avg_similarities = np.array(0)
         std_similarities = np.array(0)
 
@@ -158,7 +161,7 @@ def test_header_vector(args, dataset, files, models):
                 df = pd.read_csv(args.input + file, sep=delimiter, nrows=1)
 
                 # Calculate header embedding
-                embs = content_embeddings(model, df, dimensions, m, tokenizer, header=True)
+                embs = content_embeddings(model, df, dimensions, m, tokenizer, pool, header=True)
 
                 # Load original index of embeddings
                 index = faiss.read_index('embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')

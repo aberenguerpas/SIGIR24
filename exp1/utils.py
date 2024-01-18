@@ -55,7 +55,8 @@ def enconde_text(model_name, model, text):
         return [model.encode(text, show_progress_bar=False)]
     
 # Extract embeddings from each row
-def content_embeddings(model, df, size, model_name, tokenizer, header=False):
+def content_embeddings(model, df, size, model_name, tokenizer, pool, header=False):
+    """
     all_embs = np.empty((0, size), dtype=np.float32)
 
     for _, row in df.iterrows():
@@ -70,7 +71,14 @@ def content_embeddings(model, df, size, model_name, tokenizer, header=False):
             # Create embedding from chunks
             embs = enconde_text(model_name, model, text)
             all_embs = np.append(all_embs, embs, axis=0)
+    """
+    if (header == False):
+        sentences = [" ".join(map(str, row.values.flatten().tolist())) for _, row in df.iterrows()]
+    else:
+        sentences = [" ".join(map(str, row.index.tolist())) for _, row in df.iterrows()]
 
+    all_embs = model.encode_multi_process(sentences, pool)
+   
     return all_embs
 
 

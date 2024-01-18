@@ -10,6 +10,7 @@ def extract_base_embeddings(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = 512
+        pool = model.start_multi_process_pool()
 
         # Saves key ("m" + "_" + dataset + "_" + "file") - value (embeddings)
         # map = pd.DataFrame()
@@ -25,7 +26,7 @@ def extract_base_embeddings(args, dataset, files, models):
                 df.dropna(how='all', inplace=True)
 
                 # Calculate embeddings
-                embs = content_embeddings(model, df, dimensions, m, tokenizer)
+                embs = content_embeddings(model, df, dimensions, m, tokenizer, pool)
                 ids = np.array(range(0, len(embs))).astype(np.int64)
 
                 # Normalize them
