@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 from angle_emb import AnglE
 from transformers import AutoTokenizer
 import csv
+import numpy as np
 
 def get_model(name):
 
@@ -32,9 +33,46 @@ def get_model(name):
 
     return model, tokenizer, dimensions
 
-
 def find_delimiter(filename):
     sniffer = csv.Sniffer()
     with open(filename) as fp:
         delimiter = sniffer.sniff(fp.read(5000)).delimiter
     return delimiter
+
+# Convert text to embedding
+def enconde_text(model_name, model, text):
+    if model_name == 'uae-large':
+        return model.encode(text, to_numpy=True)
+    else:
+        return [model.encode(text, show_progress_bar=False)]
+    
+# Extract embeddings from each row
+def content_embeddings(model, df, size, model_name, tokenizer, header=False):
+    all_embs = np.empty((0, size), dtype=np.float32)
+
+    for _, row in df.iterrows():
+        if (header == False):
+            text = " ".join(map(str, row.values.flatten().tolist()))
+        else:
+            text = " ".join(map(str, row.index.tolist()))
+        
+        batch_dict = tokenizer(text,  max_length=512, return_attention_mask=False, padding=False, truncation=True)
+        # Filter that the row has no more than 512 tokens
+        if len(batch_dict['input_ids']) < 512:
+            # Create embedding from chunks
+            embs = enconde_text(model_name, model, text)
+            if len(embs) > 1:
+                print(len(embs))
+
+            all_embs = np.append(all_embs, embs, axis=0)
+
+    return all_embs
+
+def recover_data(index):
+    ids = np.arange(index.ntotal).astype('int64')
+    base_embs = []
+
+    for id in ids:
+        base_embs.append(index.reconstruct_n(int(id), 1)[0])
+    
+    return np.array(base_embs)

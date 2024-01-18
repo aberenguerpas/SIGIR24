@@ -1,6 +1,7 @@
 import argparse
 import os
-from extract_embeddings import extract_base_embeddings, test_random_reording_embeddings, test_random_deletion_of_columns
+from extract_embeddings import extract_base_embeddings
+from test_embeddings import test_random_reording_embeddings, test_random_deletion_of_columns, test_header_vector
 
 def main():
     parser = argparse.ArgumentParser(description='Process Darta')
@@ -40,10 +41,13 @@ def main():
     extract_base_embeddings(args, dataset, files, models)
 
     # 2. Random reordering of its columns test
-    test_random_reording_embeddings(args, dataset, files, models)
+    # test_random_reording_embeddings(args, dataset, files, models)
 
-    # 3. Randomly deleting 50% of columns test
-    test_random_deletion_of_columns(args, dataset, files, models)
+    # 3. Random deleting 50% of columns test
+    # test_random_deletion_of_columns(args, dataset, files, models)
+
+    # 5. Compare with header row test
+    # test_header_vector(args, dataset, files, models)
 
 if __name__ == "__main__":
     main()
