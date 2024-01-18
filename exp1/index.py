@@ -14,6 +14,12 @@ def main():
                         choices=['baseline', 'random', 'cluster'])
     parser.add_argument('-r', '--result', default='./indexs',
                         help='Name of the output folder that stores the indexs files')
+    parser.add_argument('-t', '--test', default='',
+                        choices=['test1', 'test2', 'test3', 'test4', 'all'],
+                        help='Indicates which tests you want to run')
+    parser.add_argument('-e', '--embeddings', default='yes',
+                        choices=['yes', 'no'],
+                        help='Indicates whether you want the original embeddings to be calculated or not.')
     args = parser.parse_args()
 
     dataset = args.input   
@@ -31,16 +37,20 @@ def main():
         models.append(args.model)
 
     # 1. Extract base embeddings
-    extract_base_embeddings(args, dataset, files, models)
+    if args.embeddings == 'yes':
+        extract_base_embeddings(args, dataset, files, models)
 
     # 2. Random reordering of its columns test
-    # test_random_reording_embeddings(args, dataset, files, models)
+    if args.test == 'test1' or args.test == 'all':
+        test_random_reording_embeddings(args, dataset, files, models)
 
     # 3. Random deleting 50% of columns test
-    # test_random_deletion_of_columns(args, dataset, files, models)
+    if args.test == 'test2' or args.test == 'all':
+        test_random_deletion_of_columns(args, dataset, files, models)
 
     # 5. Compare with header row test
-    # test_header_vector(args, dataset, files, models)
+    if args.test == 'test4' or args.test == 'all':
+        test_header_vector(args, dataset, files, models)
 
 if __name__ == "__main__":
     main()
