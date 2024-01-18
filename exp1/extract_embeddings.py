@@ -18,11 +18,14 @@ def enconde_text(model_name, model, text):
         return [model.encode(text, show_progress_bar=False)]
     
 # Extract embeddings from each row
-def content_embeddings(model, df, size, model_name, tokenizer):
+def content_embeddings(model, df, size, model_name, tokenizer, header=False):
     all_embs = np.empty((0, size), dtype=np.float32)
 
     for _, row in df.iterrows():
-        text = " ".join(map(str, row.values.flatten().tolist()))
+        if (header == False):
+            text = " ".join(map(str, row.values.flatten().tolist()))
+        else:
+            text = " ".join(map(str, row.index.tolist()))
         
         batch_dict = tokenizer(text,  max_length=512, return_attention_mask=False, padding=False, truncation=True)
         # Filter that the row has no more than 512 tokens
@@ -142,12 +145,12 @@ def test_random_reording_embeddings(args, dataset, files, models):
         fields = np.array(["Average, Standard desviation"])
         values = np.append(avg_similarity, std_similarity)
 
-        directory = 'results/random_reordering/'
+        directory = 'results/random_reordering/' + dataset + '/'
         if not os.path.isdir(directory):
             os.makedirs(directory)
 
         # Write values in a CSV file
-        file_name = directory + dataset + '/' + m + '_' + dataset + '.csv'
+        file_name = directory + m + '_' + dataset + '.csv'
         with open(file_name, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(fields)
@@ -182,8 +185,6 @@ def test_random_deletion_of_columns(args, dataset, files, models):
 
                 # Recover original embeddings
                 base_embs = recover_data(index)
-                print(base_embs)
-                print(embs)
 
                 # Compare original embbedings with embeddings obtained after having mixed the table
                 similarity_scores = cosine_similarity(base_embs, embs)
@@ -212,14 +213,73 @@ def test_random_deletion_of_columns(args, dataset, files, models):
         fields = np.array(["Average, Standard desviation"])
         values = np.append(avg_similarity, std_similarity)
 
-        directory = 'results/random_deletion_of_columns/'
+        directory = 'results/random_deletion_of_columns/' + dataset + '/'
         if not os.path.isdir(directory):
             os.makedirs(directory)
 
         # Write values in a CSV file
-        file_name = directory + dataset + '/' + m + '_' + dataset + '.csv'
+        file_name = directory + m + '_' + dataset + '.csv'
         with open(file_name, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(fields)
             writer.writerow(values)
 
+def test_header_vector(args, dataset, files, models):
+    for m in models:
+        model, tokenizer, dimensions = get_model(m)
+        model.max_seq_length = dimensions
+        avg_similarities = np.array(0)
+        std_similarities = np.array(0)
+
+        for file in tqdm(files):
+            try:
+                # Read dataframe
+                delimiter = find_delimiter(args.input + file)
+                df = pd.read_csv(args.input + file, sep=delimiter, nrows=1)
+
+                # Calculate header embedding
+                embs = content_embeddings(model, df, dimensions, m, tokenizer, header=True)
+
+                # Load original index of embeddings
+                index = faiss.read_index('embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
+
+                # Recover original embeddings
+                base_embs = recover_data(index)
+
+                # Compare original embbedings with embeddings obtained after having mixed the table
+                similarity_scores = np.cosine_similarity(base_embs, embs)
+
+                # Average value of embeddings similarities
+                avg_similarity = np.mean(similarity_scores)
+
+                # Standard deviation of embeddings similarities
+                std_similarity = np.std(similarity_scores)
+
+                # Save these values
+                avg_similarities = np.append(avg_similarities, avg_similarity)
+                std_similarities = np.append(std_similarities, std_similarity)
+
+            except Exception as e:
+                print('Error en archivo', file)
+                print(e)
+                print(traceback.format_exc())
+        
+        # Average value of model similarities
+        avg_similarity = np.mean(avg_similarities)
+
+        # Average value of the standard deviations of the model similarities
+        std_similarity = np.std(std_similarities)
+
+        fields = np.array(["Average, Standard desviation"])
+        values = np.append(avg_similarity, std_similarity)
+
+        directory = 'results/header_vector/' + dataset + '/'
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
+
+        # Write values in a CSV file
+        file_name = directory + m + '_' + dataset + '.csv'
+        with open(file_name, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(fields)
+            writer.writerow(values)
