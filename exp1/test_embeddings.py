@@ -151,7 +151,7 @@ def test_random_string(args, dataset, files, models):
         avg_similarities = np.empty(0)
         std_similarities = np.empty(0)
 
-        for file in tqdm(files[:1]):
+        for file in tqdm(files[:50000]):
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
