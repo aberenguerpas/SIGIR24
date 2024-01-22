@@ -7,17 +7,16 @@ import traceback
 from sklearn.utils import shuffle
 from tqdm import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
-from utils import get_model, find_delimiter, content_embeddings, recover_data
+from utils import get_model, find_delimiter, content_embeddings, recover_data, random_words
 
 def test_random_reording_embeddings(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = 512
-        pool = model.start_multi_process_pool()
-        avg_similarities = np.array(0)
-        std_similarities = np.array(0)
+        avg_similarities = np.empty(0)
+        std_similarities = np.empty(0)
 
-        for file in tqdm(files):
+        for file in tqdm(files[:50000]):
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
@@ -31,10 +30,10 @@ def test_random_reording_embeddings(args, dataset, files, models):
                 df = shuffle(df)
 
                 # Calculate embeddings
-                embs = content_embeddings(model, df, dimensions, m, tokenizer, pool)
+                embs = content_embeddings(model, df, dimensions, m, tokenizer)
 
                 # Load original index of embeddings
-                index = faiss.read_index('embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
+                index = faiss.read_index('/app/raid/embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
 
                 # Recover original embeddings
                 base_embs = recover_data(index)
@@ -81,11 +80,10 @@ def test_random_deletion_of_columns(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = dimensions
-        pool = model.start_multi_process_pool()
-        avg_similarities = np.array(0)
-        std_similarities = np.array(0)
+        avg_similarities = np.empty(0)
+        std_similarities = np.empty(0)
 
-        for file in tqdm(files):
+        for file in tqdm(files[:50000]):
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
@@ -100,10 +98,10 @@ def test_random_deletion_of_columns(args, dataset, files, models):
                 df = df.drop(columns=columns_to_delete)
 
                 # Calculate embeddings
-                embs = content_embeddings(model, df, dimensions, m, tokenizer, pool)
+                embs = content_embeddings(model, df, dimensions, m, tokenizer)
 
                 # Load original index of embeddings
-                index = faiss.read_index('embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
+                index = faiss.read_index('/app/raid/embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
 
                 # Recover original embeddings
                 base_embs = recover_data(index)
@@ -146,31 +144,34 @@ def test_random_deletion_of_columns(args, dataset, files, models):
             writer.writerow(fields)
             writer.writerow(values)
 
-def test_header_vector(args, dataset, files, models):
+def test_random_string(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = dimensions
-        pool = model.start_multi_process_pool()
-        avg_similarities = np.array(0)
-        std_similarities = np.array(0)
+        avg_similarities = np.empty(0)
+        std_similarities = np.empty(0)
 
-        for file in tqdm(files):
+        for file in tqdm(files[:1]):
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
                 df = pd.read_csv(args.input + file, sep=delimiter, nrows=1)
 
-                # Calculate header embedding
-                embs = content_embeddings(model, df, dimensions, m, tokenizer, pool, header=True)
+                # Generate random row
+                df = pd.DataFrame(np.random.choice(random_words, size=(1, df.shape[1])))
+                # print(df)
+
+                # Calculate random row embedding
+                embs = content_embeddings(model, df, dimensions, m, tokenizer)
 
                 # Load original index of embeddings
-                index = faiss.read_index('embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
+                index = faiss.read_index('/app/raid/embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
 
                 # Recover original embeddings
                 base_embs = recover_data(index)
 
                 # Compare original embbedings with embeddings obtained after having mixed the table
-                similarity_scores = np.cosine_similarity(base_embs, embs)
+                similarity_scores = cosine_similarity(base_embs, embs)
 
                 # Average value of embeddings similarities
                 avg_similarity = np.mean(similarity_scores)
@@ -186,7 +187,67 @@ def test_header_vector(args, dataset, files, models):
                 print('Error en archivo', file)
                 print(e)
                 print(traceback.format_exc())
-        
+
+        # Average value of model similarities
+        avg_similarity = np.mean(avg_similarities)
+
+        # Average value of the standard deviations of the model similarities
+        std_similarity = np.std(std_similarities)
+
+        fields = np.array(["Average, Standard desviation"])
+        values = np.append(avg_similarity, std_similarity)
+
+        directory = 'results/random_string/' + dataset + '/'
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
+
+        # Write values in a CSV file
+        file_name = directory + m + '_' + dataset + '.csv'
+        with open(file_name, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(fields)
+            writer.writerow(values)
+
+def test_header_vector(args, dataset, files, models):
+    for m in models:
+        model, tokenizer, dimensions = get_model(m)
+        model.max_seq_length = dimensions
+        avg_similarities = np.empty(0)
+        std_similarities = np.empty(0)
+
+        for file in tqdm(files[:50000]):
+            try:
+                # Read dataframe
+                delimiter = find_delimiter(args.input + file)
+                df = pd.read_csv(args.input + file, sep=delimiter, nrows=1)
+
+                # Calculate header embedding
+                embs = content_embeddings(model, df, dimensions, m, tokenizer, header=True)
+
+                # Load original index of embeddings
+                index = faiss.read_index('/app/raid/embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
+
+                # Recover original embeddings
+                base_embs = recover_data(index)
+
+                # Compare original embbedings with embeddings obtained after having mixed the table
+                similarity_scores = cosine_similarity(base_embs, embs)
+
+                # Average value of embeddings similarities
+                avg_similarity = np.mean(similarity_scores)
+
+                # Standard deviation of embeddings similarities
+                std_similarity = np.std(similarity_scores)
+
+                # Save these values
+                avg_similarities = np.append(avg_similarities, avg_similarity)
+                std_similarities = np.append(std_similarities, std_similarity)
+
+            except Exception as e:
+                print('Error en archivo', file)
+                print(e)
+                print(traceback.format_exc())
+
         # Average value of model similarities
         avg_similarity = np.mean(avg_similarities)
 
