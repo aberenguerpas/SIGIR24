@@ -6,7 +6,7 @@ from test_embeddings import test_random_reording_embeddings, test_random_deletio
 def main():
     parser = argparse.ArgumentParser(description='Process Darta')
     parser.add_argument('-i', '--input', default='sensors',
-                        choices=['sensors', 'wikitables', 'chicago'],
+                        choices=['sensors', 'wikitables', 'dublin'],
                         help='Directorio de los datos')
     parser.add_argument('-m', '--model', default='all',
                         choices=['all', 'uae-large', 'bge-large', 'bge-base', 'gte-large', 'ember'])

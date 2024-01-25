@@ -1067,7 +1067,7 @@ def content_embeddings(model, df, size, model_name, tokenizer, header=False, ran
             text = " ".join(map(str, row.values.flatten().tolist()))
         elif(randow_row == True):
             text = " ".join(map(str, row.values.flatten().tolist()))
-        else:
+        elif(header == True):
             text = " ".join(map(str, row.index.tolist()))
 
         batch_dict = tokenizer(text,  max_length=512, return_attention_mask=False, padding=False, truncation=True)

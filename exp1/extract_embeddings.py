@@ -10,12 +10,11 @@ def extract_base_embeddings(args, dataset, files, models):
     for m in models:
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = 512
-        # pool = model.start_multi_process_pool()
 
         # Saves key ("m" + "_" + dataset + "_" + "file") - value (embeddings)
         # map = pd.DataFrame()
 
-        for file in tqdm(files[:50000]):
+        for file in tqdm(files[:500]):
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
@@ -40,7 +39,7 @@ def extract_base_embeddings(args, dataset, files, models):
                 index.add_with_ids(embs, ids)
 
                 # Save index in file
-                faiss.write_index(index, 'embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
+                faiss.write_index(index, '/app/raid/embeddings/' + dataset + '/' + m + '_' + dataset + '_' + file.replace('.csv', '') + '.index')
                 
             except Exception as e:
                 print('Error en archivo', file)
