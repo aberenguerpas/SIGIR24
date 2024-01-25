@@ -16,7 +16,7 @@ def test_random_reording_embeddings(args, dataset, files, models):
         avg_similarities = np.empty(0)
         std_similarities = np.empty(0)
 
-        for file in tqdm(files[:50000]):
+        for file in tqdm(files):
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
@@ -83,7 +83,7 @@ def test_random_deletion_of_columns(args, dataset, files, models):
         avg_similarities = np.empty(0)
         std_similarities = np.empty(0)
 
-        for file in tqdm(files[:50000]):
+        for file in tqdm(files):
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
@@ -106,7 +106,7 @@ def test_random_deletion_of_columns(args, dataset, files, models):
                 # Recover original embeddings
                 base_embs = recover_data(index)
 
-                # Compare original embbedings with embeddings obtained after having mixed the table
+                # Compare original embbedings with embeddings obtained after random deletion of columns
                 similarity_scores = cosine_similarity(base_embs, embs)
 
                 # Average value of embeddings similarities
@@ -151,7 +151,7 @@ def test_random_string(args, dataset, files, models):
         avg_similarities = np.empty(0)
         std_similarities = np.empty(0)
 
-        for file in tqdm(files[:50000]):
+        for file in tqdm(files):
             try:
                 # Read dataframe
                 delimiter = find_delimiter(args.input + file)
@@ -170,7 +170,7 @@ def test_random_string(args, dataset, files, models):
                 # Recover original embeddings
                 base_embs = recover_data(index)
 
-                # Compare original embbedings with embeddings obtained after having mixed the table
+                # Compare original embbedings with random string embedding
                 similarity_scores = cosine_similarity(base_embs, embs)
 
                 # Average value of embeddings similarities
@@ -230,7 +230,7 @@ def test_header_vector(args, dataset, files, models):
                 # Recover original embeddings
                 base_embs = recover_data(index)
 
-                # Compare original embbedings with embeddings obtained after having mixed the table
+                # Compare original embbedings with header vector embedding
                 similarity_scores = cosine_similarity(base_embs, embs)
 
                 # Average value of embeddings similarities

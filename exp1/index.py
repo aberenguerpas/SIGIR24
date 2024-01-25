@@ -23,9 +23,6 @@ def main():
     dataset = args.input   
     args.input = '/app/raid/' + args.input + '/'
 
-    # Enable GPUs
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
-
     files = os.listdir(args.input)
 
     models = []

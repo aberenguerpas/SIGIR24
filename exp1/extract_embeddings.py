@@ -11,9 +11,6 @@ def extract_base_embeddings(args, dataset, files, models):
         model, tokenizer, dimensions = get_model(m)
         model.max_seq_length = 512
 
-        # Saves key ("m" + "_" + dataset + "_" + "file") - value (embeddings)
-        # map = pd.DataFrame()
-
         for file in tqdm(files[:500]):
             try:
                 # Read dataframe
