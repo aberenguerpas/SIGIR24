@@ -1008,6 +1008,7 @@ random_words = [
     'Humanism',
 ]
 
+
 def get_model(name):
 
     if torch.cuda.is_available():

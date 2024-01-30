@@ -3,61 +3,72 @@ import faiss
 import os
 import pandas as pd
 import numpy as np
-import sklearn
-import traceback
 from tqdm import tqdm
-from utils import get_model, find_delimiter
+from utils import get_model
 
 
-# Convertir texto a embedding
+def save_result(id, rank, path_result):
+    """
+    Save search results in a suitable format to trec_eval
+    """
+    df = pd.DataFrame.from_dict(rank)
+    df.reset_index(inplace=True)
+    df = df.rename(columns={'index': 'rank'})
+    df['query_id'] = id
+    df['Q0'] = 'Q0'
+    df['STANDARD'] = 'STANDARD'
+    df['score'] = df['score'].round(3)
+
+    # Sort columns
+    new_cols = ["query_id",
+                "Q0", "document_id",
+                "rank", "score", "STANDARD"]
+    df = df[new_cols]
+    df = df.reindex(columns=new_cols)
+
+    df.to_csv(path_result, mode='a', index=False, header=False, sep="\t")
+
+
 def enconde_text(model_name, model, text):
+    """
+    Convert text to embedding
+    """
     if model_name == 'uae-large':
         return model.encode(text, to_numpy=True)
     else:
         return [model.encode(text, show_progress_bar=False)]
 
 
-# Saca embeddings de cada fila
 def content_embeddings(model, df, size, model_name):
-    # Array vacio donde meter todos y luego promediarlos
+    """
+    Get a embedding for each dataset row
+    """
     all_embs = np.empty((0, size), dtype=np.float32)
 
     for _, row in df.iterrows():
-
         text = " ".join(map(str, row.values.flatten().tolist()))
-        # Create embedding from chunks
         embs = enconde_text(model_name, model, text)
-
-        if len(embs) > 1:
-            print(len(embs))
-
         all_embs = np.append(all_embs, embs, axis=0)
 
     return all_embs
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Process Darta')
-    parser.add_argument('-i', '--input', default='sensors',
-                        choices=['sensors', 'wikitables', 'chicago', 'dublin'],
-                        help='Directorio de los datos')
+    parser = argparse.ArgumentParser(description='Search in the indexed data')
+    parser.add_argument('-i', '--input',
+                        default='./benchmarks_wikitables/queries.txt',
+                        help='Queries file')
+    parser.add_argument('-d', '--dataset', default='wikitables',
+                        help='Dataset name')
     parser.add_argument('-m', '--model', default='all',
                         choices=['all', 'uae-large', 'bge-large',
                                  'bge-base', 'gte-large', 'ember'])
-    parser.add_argument('-r', '--result', default='./indexs',
-                        help='Output folder for indexs files')
-
+    parser.add_argument('-r', '--result', default='./search_results/',
+                        help='Output folder')
     args = parser.parse_args()
 
-    dataset = args.input
-
-    files = []
-    if dataset == 'wikitables':
-        args.input = './benchmarks_wikitables/queries.txt'
-        files = open(args.input, "r").readlines()
-    else:
-        args.input = '../data/' + args.input + '/'
-        files = os.listdir(args.input)
+    if not os.path.isdir(args.result):
+        os.mkdir(args.result)
 
     models = []
     if args.model == 'all':
@@ -69,67 +80,37 @@ def main():
         model, dimensions = get_model(m)
         model.max_seq_length = dimensions
 
-        index = faiss.read_index("./index_files/"+m+"_"+dataset+".index")
-        map = pd.read_csv("./index_files/"+m+"_"+dataset+"_map.csv")
+        index = faiss.read_index("./index_files/"+m+"_"+args.dataset+".index")
+        map = pd.read_csv("./index_files/"+m+"_"+args.dataset+"_map.csv")
 
-        results = pd.DataFrame(columns=['q', 'P@1', 'RR'])
-        print(files)
-        for ir, file in enumerate(tqdm(files)):
+        files = open(args.input, "r").readlines()
+        for file in tqdm(files):
             try:
-                if dataset == 'wikitables':
-                    file_name = file.split("\t")[1].strip()
-                    df = pd.read_csv('../data/wikitables/' + file_name + ".csv")
+                file_name = file.split("\t")[1].strip()
+                id = file.split("\t")[0].strip()
+                df = pd.read_csv('../data/'+args.dataset+'/'+file_name+".csv")
 
-                else:
-                    # Read dataframe
-                    delimiter = find_delimiter(args.input + file)
-                    df = pd.read_csv(args.input + file, sep=delimiter)
+                # Calculate and normalize embeddings
+                embs = content_embeddings(model, df, dimensions, m)
+                embs = np.array([np.mean(embs, axis=0)])
+                faiss.normalize_L2(embs)
 
-                    # Remove columns with all NaNs
-                    df = df.dropna(axis='columns', how='all')
-                    df.dropna(how='all', inplace=True)
+                # Search in the index
+                distances, ann = index.search(np.array(embs), k=20)
 
-                    # Se mezcla
-                    df = sklearn.utils.shuffle(df, random_state=0)
+                # Format and save the results
+                documents_ids = []
+                for i in ann[0]:
+                    idx = map.iloc[i]['dataset'].split(".")[0].split("_")[-1]
+                    documents_ids.append(idx)
 
-                    # Seleccionamos % de la tabla que sera indexado
-                    ratio = 0.10
-                    total_rows = df.shape[0]
-                    search_size = int(total_rows*ratio)
+                rank = pd.DataFrame({'document_id': documents_ids,
+                                     'score': distances[0]})
 
-                    # Datos en para indexar
-                    df_search = df[-search_size:]
+                save_result(id, rank, args.result+m+'_'+args.dataset+'.csv')
 
-                    # Se calculan los embeddings
-                    embs = content_embeddings(model, df_search, dimensions, m)
-                    embs = np.array([np.mean(embs, axis=0)])
-                    # Se normalizan
-                    faiss.normalize_L2(embs)
-
-                    distances, ann = index.search(np.array(embs), k=10)
-                    #results_aux = pd.DataFrame({'distances': distances[0], 'ann': ann[0]})
-
-                    # Calculate P_1
-                    r_id = ann[0][0]
-                    p_1 = 0
-                    print(map.iloc[r_id]['dataset'], file)
-                    if map.iloc[r_id]['dataset'] == file:
-                        p_1 = 1
-
-                    score_rr = 0
-                    for k, r in enumerate(ann[0]):
-                        if map.iloc[r_id]['dataset'] == file:
-                            score_rr = 1/(k+1)
-                            break
-                    # add result to results dataframe
-                    results = results._append({'q': file,
-                                    'P@1': p_1,
-                                    'RR': score_rr},
-                                    ignore_index = True)
-                #print(results.head())
-            except Exception as e:
-                print(e)
-        results.to_csv('./results/'+m+'_'+dataset+'.csv')
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
