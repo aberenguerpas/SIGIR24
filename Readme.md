@@ -29,7 +29,13 @@ and then extract it in the `data` folder
 *Note: _Sensors_ dataset it is not include due to privacy aspects*
 
 ## 1. Assess models robustness
+In order to run this set of tests, some arguments have to be specified. We have an example in the following command:
 
+```
+python index.py -i sensors -m uae-large -e yes -t all
+```
+
+Next, the different flags are described: `-i` specifies the dataset on which the tests will be performed, `-m` indicates the model to be tested, `-e` indicates whether to calculate the base embeddings or not (in case they are already calculated) and `-t` refers to the specific test to be launched (in this case, with the `all` option, the 4 tests that compose the set are executed).
 
 ## 2. Evaluate data retrieval performance
 The first step involves constructing a comprehensive embedding index. This is based on the individual table embeddings computed in a prior experiment. To accomplish this, run the following command:

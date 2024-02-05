@@ -7,7 +7,7 @@ def main():
     parser = argparse.ArgumentParser(description='Process Darta')
     parser.add_argument('-i', '--input', default='sensors',
                         choices=['sensors', 'wikitables', 'dublin'],
-                        help='Directorio de los datos')
+                        help='Name of the dataset')
     parser.add_argument('-m', '--model', default='all',
                         choices=['all', 'uae-large', 'bge-large', 'bge-base', 'gte-large', 'ember'])
     parser.add_argument('-r', '--result', default='./indexs',
